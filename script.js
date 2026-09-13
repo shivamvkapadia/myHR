@@ -24,14 +24,22 @@ loginForm.addEventListener("submit", (e) => {
 });
 
 // ---- Demo data ----
-const employees = [
-  { name: "Ava Martinez", role: "Manager", dept: "Engineering", email: "ava@myhr.demo", status: "Active" },
-  { name: "Liam Chen", role: "Employee", dept: "Engineering", email: "liam@myhr.demo", status: "Active" },
-  { name: "Sofia Rossi", role: "Employee", dept: "Design", email: "sofia@myhr.demo", status: "On Leave" },
-  { name: "Noah Patel", role: "Employee", dept: "Sales", email: "noah@myhr.demo", status: "Active" },
-  { name: "Mia Johnson", role: "Admin", dept: "HR", email: "mia@myhr.demo", status: "Active" },
-  { name: "Ethan Kim", role: "Employee", dept: "Support", email: "ethan@myhr.demo", status: "Active" },
-];
+const firstNames = ["Ava","Liam","Sofia","Noah","Mia","Ethan","Olivia","Lucas","Emma","Mason","Isabella","Logan","Charlotte","James","Amelia","Benjamin","Harper","Elijah","Evelyn","Aiden","Abigail","Jacob","Ella","Michael","Scarlett","Daniel","Grace","Henry","Chloe","Sebastian","Victoria","Jack","Riley","Owen","Zoey","Wyatt","Nora","Leo","Hannah","Caleb"];
+const lastNames = ["Martinez","Chen","Rossi","Patel","Johnson","Kim","Garcia","Brown","Nguyen","Smith","Davis","Lopez","Wilson","Anderson","Taylor","Moore","Clark","Lewis","Walker","Hall","Young","King","Wright","Scott","Green","Baker","Adams","Nelson","Carter","Mitchell","Perez","Roberts","Turner","Phillips","Campbell","Parker","Evans","Edwards","Collins","Stewart"];
+const depts = ["Engineering","Design","Sales","HR","Support","Marketing"];
+const roles = ["Employee","Employee","Employee","Employee","Manager","Admin"];
+
+const employees = firstNames.map((first, i) => {
+  const last = lastNames[i];
+  const role = i === 0 ? "Admin" : roles[i % roles.length];
+  return {
+    name: `${first} ${last}`,
+    role,
+    dept: depts[i % depts.length],
+    email: `${first.toLowerCase()}@myhr.demo`,
+    status: i % 7 === 0 ? "On Leave" : "Active",
+  };
+});
 
 const tasks = [
   { task: "Complete onboarding paperwork", owner: "Noah Patel", done: true },
@@ -125,6 +133,7 @@ function updateStats() {
   const done = tasks.filter((t) => t.done).length;
   document.getElementById("statDone").textContent = done;
   document.getElementById("statPending").textContent = tasks.length - done;
+  document.getElementById("statEmployees").textContent = employees.length;
 }
 
 // ---- Slack sync button (demo only) ----
