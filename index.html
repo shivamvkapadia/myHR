@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>myHR — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -39,10 +42,10 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-item active" data-view="dashboard">Dashboard</button>
-        <button class="nav-item" data-view="employees">Employees</button>
-        <button class="nav-item" data-view="slack">Slack Integration</button>
-        <button class="nav-item" data-view="files">Project Files</button>
+        <button class="nav-item active" data-view="dashboard" data-label="Dashboard"><span class="nav-icon">◆</span>Dashboard</button>
+        <button class="nav-item" data-view="employees" data-label="Employees"><span class="nav-icon">◈</span>Employees</button>
+        <button class="nav-item" data-view="slack" data-label="Slack Integration"><span class="nav-icon">◇</span>Slack Integration</button>
+        <button class="nav-item" data-view="files" data-label="Project Files"><span class="nav-icon">▦</span>Project Files</button>
       </nav>
 
       <div class="role-switch">
@@ -70,19 +73,23 @@
       <!-- DASHBOARD VIEW -->
       <section class="view active" id="view-dashboard">
         <div class="stat-grid">
-          <div class="stat-card">
+          <div class="stat-card accent-purple">
+            <div class="stat-icon">👥</div>
             <span class="stat-label">Total Employees</span>
             <span class="stat-value" id="statEmployees">0</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card accent-teal">
+            <div class="stat-icon">✅</div>
             <span class="stat-label">Tasks Completed</span>
             <span class="stat-value" id="statDone">0</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card accent-amber">
+            <div class="stat-icon">⏳</div>
             <span class="stat-label">Tasks Pending</span>
             <span class="stat-value" id="statPending">0</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card accent-pink">
+            <div class="stat-icon">🔗</div>
             <span class="stat-label">Slack Status</span>
             <span class="stat-value" id="slackStatusMini">Not Synced</span>
           </div>
@@ -106,18 +113,20 @@
           </div>
 
           <div id="employeeTableWrap">
-            <table class="emp-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="employeeTableBody"></tbody>
-            </table>
+            <div class="emp-table-scroll">
+              <table class="emp-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="employeeTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>

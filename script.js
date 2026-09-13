@@ -62,7 +62,7 @@ navItems.forEach((btn) => {
     btn.classList.add("active");
     const target = btn.dataset.view;
     views.forEach((v) => v.classList.toggle("active", v.id === `view-${target}`));
-    viewTitle.textContent = btn.textContent;
+    viewTitle.textContent = btn.dataset.label;
     if (target === "employees") renderEmployees();
   });
 });
@@ -90,18 +90,27 @@ function renderEmployees() {
   wrap.style.display = "block";
   locked.style.display = "none";
 
+  const avatarColors = ["#7c5cff", "#35d0ba", "#ff8a5c", "#ff5c9d", "#5c9dff", "#c45cff"];
   const tbody = document.getElementById("employeeTableBody");
   tbody.innerHTML = employees
-    .map(
-      (e) => `
+    .map((e, i) => {
+      const initials = e.name.split(" ").map((p) => p[0]).join("");
+      const color = avatarColors[i % avatarColors.length];
+      const roleClass = e.role === "Admin" ? "role-admin" : e.role === "Manager" ? "role-manager" : "role-employee";
+      return `
       <tr>
-        <td>${e.name}</td>
-        <td>${e.role}</td>
+        <td>
+          <div class="emp-name-cell">
+            <span class="avatar" style="background:${color}22; color:${color};">${initials}</span>
+            ${e.name}
+          </div>
+        </td>
+        <td><span class="role-pill ${roleClass}">${e.role}</span></td>
         <td>${e.dept}</td>
-        <td>${e.email}</td>
+        <td class="muted">${e.email}</td>
         <td><span class="status-pill ${e.status === "Active" ? "status-active" : "status-onleave"}">${e.status}</span></td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 }
 
