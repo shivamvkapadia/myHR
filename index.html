@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>myHR — Dashboard</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- LOGIN GATE -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="brand" style="justify-content:center; margin-bottom:8px;">
+        <span class="brand-mark">mH</span>
+        <span class="brand-name">myHR</span>
+      </div>
+      <p class="muted" style="text-align:center; margin-bottom:20px;">Sign in with your work email</p>
+
+      <form id="loginForm">
+        <div class="form-row">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="you@company.com" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Sign In</button>
+      </form>
+
+      <div id="loginMsg" class="login-msg"></div>
+    </div>
+  </div>
+
+  <div class="app" id="appRoot" style="display:none;">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">mH</span>
+        <span class="brand-name">myHR</span>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="employees">Employees</button>
+        <button class="nav-item" data-view="slack">Slack Integration</button>
+        <button class="nav-item" data-view="files">Project Files</button>
+      </nav>
+
+      <div class="role-switch">
+        <label for="roleSelect">Viewing as</label>
+        <select id="roleSelect">
+          <option value="admin">Admin</option>
+          <option value="employee">Employee</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <header class="topbar">
+        <h1 id="viewTitle">Dashboard</h1>
+        <div class="topbar-actions">
+          <span id="roleBadge" class="badge badge-admin">ADMIN</span>
+          <button id="syncBtn" class="btn btn-primary">
+            <span class="dot"></span> Sync with Slack
+          </button>
+        </div>
+      </header>
+
+      <!-- DASHBOARD VIEW -->
+      <section class="view active" id="view-dashboard">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <span class="stat-label">Total Employees</span>
+            <span class="stat-value">6</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Tasks Completed</span>
+            <span class="stat-value" id="statDone">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Tasks Pending</span>
+            <span class="stat-value" id="statPending">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Slack Status</span>
+            <span class="stat-value" id="slackStatusMini">Not Synced</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Team Task Checklist</h2>
+          <p class="muted">Live overview — check off tasks as employees complete them.</p>
+          <div id="checklistWrap"></div>
+        </div>
+      </section>
+
+      <!-- EMPLOYEES VIEW (ADMIN ONLY) -->
+      <section class="view" id="view-employees">
+        <div class="panel">
+          <h2>Employee Directory</h2>
+          <p class="muted admin-only-note">Admin-only access — role-based access control (RBAC) in effect.</p>
+
+          <div id="lockedNotice" class="locked-notice" style="display:none;">
+            🔒 This section is restricted to Admins. Switch role above to preview RBAC.
+          </div>
+
+          <div id="employeeTableWrap">
+            <table class="emp-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="employeeTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLACK INTEGRATION VIEW -->
+      <section class="view" id="view-slack">
+        <div class="panel">
+          <h2>Slack Integration</h2>
+          <p class="muted">Concept only for this demo — no live connection is made.</p>
+
+          <div class="form-row">
+            <label for="slackApiKey">Slack API Key</label>
+            <input type="password" id="slackApiKey" placeholder="xoxb-your-slack-api-key" />
+          </div>
+
+          <div class="form-row">
+            <label for="slackChannel">Default Channel</label>
+            <input type="text" id="slackChannel" placeholder="#team-tasks" />
+          </div>
+
+          <button id="saveSlackBtn" class="btn btn-outline">Save Configuration</button>
+          <span id="slackSavedMsg" class="saved-msg"></span>
+
+          <div class="idea-box">
+            <h3>💡 Idea — how the real sync would work</h3>
+            <ul>
+              <li>Employee checks off a task → myHR posts an update to the linked Slack channel.</li>
+              <li>Slack slash command <code>/mytask done "Task name"</code> marks a task complete back in myHR.</li>
+              <li>New task assigned in myHR → bot DMs the employee on Slack automatically.</li>
+              <li>Daily digest posted every morning summarizing pending tasks per employee.</li>
+              <li>Backend: Supabase Edge Function listens for Slack events + writes to the tasks table.</li>
+            </ul>
+            <p class="muted">This section is just the design/plan for now — no working backend is connected.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROJECT FILES VIEW -->
+      <section class="view" id="view-files">
+        <div class="panel">
+          <h2>Project Files</h2>
+          <p class="muted">Dump project-related files here for this demo.</p>
+
+          <div class="dropzone" id="dropzone">
+            <p>Drag & drop files here, or click to browse</p>
+            <input type="file" id="fileInput" multiple hidden />
+          </div>
+
+          <ul class="file-list" id="fileList"></ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
