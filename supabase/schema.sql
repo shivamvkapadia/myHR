@@ -603,3 +603,29 @@ begin
     end;
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Agent API keys (let AI agents talk to myHR through the agent-api function)
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.agent_keys (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references public.organizations(id) on delete cascade,
+  name          text not null check (char_length(name) between 1 and 60),
+  -- sha256 of the plaintext key. The key itself is shown once, never stored.
+  key_hash      text not null unique,
+  key_prefix    text not null,
+  role          public.org_role not null default 'manager',
+  created_by    uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at    timestamptz not null default now(),
+  last_used_at  timestamptz,
+  revoked_at    timestamptz
+);
+create index if not exists agent_keys_org_idx on public.agent_keys(org_id);
+
+alter table public.agent_keys enable row level security;
+
+drop policy if exists agent_keys_all on public.agent_keys;
+create policy agent_keys_all on public.agent_keys for all to authenticated
+  using (public.is_admin(org_id))
+  with check (public.is_admin(org_id) and role <> 'owner');

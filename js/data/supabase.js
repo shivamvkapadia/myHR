@@ -196,6 +196,21 @@ export async function createSupabaseAdapter(url, anonKey) {
       return data;
     },
 
+    // ---------- agent keys ----------
+    agentEndpoint() { return `${url.replace(/\/$/, "")}/functions/v1/agent-api`; },
+    async listAgentKeys(orgId) {
+      return check(await sb.from("agent_keys").select("*").eq("org_id", orgId).order("created_at", { ascending: false }));
+    },
+    async createAgentKey(orgId, { name, role }) {
+      const { generateAgentKey } = await import("../lib/keys.js");
+      const { key, hash, prefix } = await generateAgentKey();
+      const row = await one(sb.from("agent_keys").insert({ org_id: orgId, name, role, key_hash: hash, key_prefix: prefix }));
+      return { key, row };
+    },
+    async revokeAgentKey(id) {
+      return one(sb.from("agent_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id));
+    },
+
     // ---------- files ----------
     async listFiles(orgId) { return check(await sb.from("files").select("*").eq("org_id", orgId).order("created_at", { ascending: false })); },
     async uploadFile(orgId, file, uploaderName) {

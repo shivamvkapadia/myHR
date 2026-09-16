@@ -42,7 +42,17 @@ css/base.css        Tokens + components + app shell
 css/pages.css       Page layouts + landing + auth
 supabase/schema.sql Tables, RLS, triggers, RPCs, storage bucket
 supabase/functions/slack-notify   Edge Function (DB webhooks + app calls)
+supabase/functions/agent-api      Edge Function: API-key access for AI agents
+mcp/myhr-mcp.mjs    Zero-dep MCP server (stdio JSON-RPC) wrapping agent-api
 ```
+
+## AI agent access
+`agent_keys` holds sha256 hashes of `myhr_live_…` keys (plaintext shown once,
+created in the browser, never stored). The `agent-api` function hashes the
+incoming Bearer token, looks up the key's org + role, and checks every action
+against the same permission matrix the UI uses. 15 actions: directory reads,
+`add_employee` (fires onboarding automations), task CRUD, onboarding status,
+activity, digest, `post_slack`. Managed in Settings → AI agents.
 
 ## Data model
 `organizations, profiles, employees, boards, board_columns, tasks,

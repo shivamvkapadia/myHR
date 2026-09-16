@@ -89,6 +89,45 @@ supabase/functions/slack-notify   Edge Function for Slack
 
 In Demo mode, Slack messages are posted directly from the browser to the webhook, so you can try it without deploying anything.
 
+## 4. Connect AI agents (optional)
+
+Agents get their own API keys, scoped by role — an agent can never do more than its role allows.
+
+```bash
+supabase functions deploy agent-api --no-verify-jwt
+```
+
+Then **Settings → AI agents → Create agent key**, pick Employee / Manager / Admin, and copy the key (shown once).
+
+**MCP** — `mcp/myhr-mcp.mjs` is a zero-dependency MCP server (Node 18+) exposing 15 tools: search the directory, add people (which fires onboarding automations), list/create/complete tasks, check onboarding progress, read activity, get a digest, post to Slack. Settings → AI agents generates the config for you:
+
+```json
+{
+  "mcpServers": {
+    "myhr": {
+      "command": "node",
+      "args": ["/absolute/path/to/myHR/mcp/myhr-mcp.mjs"],
+      "env": {
+        "MYHR_API_URL": "https://<project>.supabase.co/functions/v1/agent-api",
+        "MYHR_API_KEY": "myhr_live_..."
+      }
+    }
+  }
+}
+```
+
+Verify before wiring it up: `node mcp/myhr-mcp.mjs --check`.
+
+**Plain HTTP** if you're not using MCP:
+
+```bash
+curl -X POST https://<project>.supabase.co/functions/v1/agent-api \
+  -H "Authorization: Bearer myhr_live_..." -H "Content-Type: application/json" \
+  -d '{"action":"list_tasks","params":{"status":"overdue"}}'
+```
+
+Details and the full action list: [`mcp/README.md`](mcp/README.md).
+
 ## Local development
 
 ```bash

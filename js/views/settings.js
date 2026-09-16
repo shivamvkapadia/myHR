@@ -1,10 +1,10 @@
 // Settings: organization, roles & permissions, appearance, account, backend.
-import { html, on, $, formData, slugify } from "../lib/dom.js";
+import { html, mount, on, $, formData, slugify, copyText, timeAgo } from "../lib/dom.js";
 import { icon } from "../lib/icons.js";
 import { ROLES, ROLE_META, PERMISSIONS } from "../lib/perms.js";
 import { app, refresh, loadMemberships, selectOrg, resetApp } from "../app.js";
 import { go } from "../router.js";
-import { toast, toastError, confirmDialog, setBusy } from "../ui/ui.js";
+import { modal, toast, toastError, confirmDialog, setBusy } from "../ui/ui.js";
 import { bindAppearance } from "../ui/appearance.js";
 import { rolePill } from "../ui/bits.js";
 import { SUPABASE_URL } from "../config.js";
@@ -16,8 +16,81 @@ const TABS = [
   { id: "account", label: "Account", icon: "key" },
   { id: "organization", label: "Organization", icon: "building", perm: "org.manage" },
   { id: "roles", label: "Roles & permissions", icon: "shield" },
+  { id: "agents", label: "AI agents", icon: "branch", perm: "integrations.manage" },
   { id: "backend", label: "Backend", icon: "database" },
 ];
+
+// Agent keys are loaded lazily per organization.
+let agentKeys = null;
+let keysFor = null;
+
+const AGENT_ROLES = {
+  employee: "Employee — read the directory, boards and onboarding; create tasks",
+  manager: "Manager — also complete and edit any task, see automations",
+  admin: "Admin — also add/update employees and post to Slack",
+};
+
+const mcpSnippet = (key = "myhr_live_…") => JSON.stringify({
+  mcpServers: {
+    myhr: {
+      command: "node",
+      args: ["/absolute/path/to/myHR/mcp/myhr-mcp.mjs"],
+      env: {
+        MYHR_API_URL: app.backend.agentEndpoint() || "https://<project>.supabase.co/functions/v1/agent-api",
+        MYHR_API_KEY: key,
+      },
+    },
+  },
+}, null, 2);
+
+function keysBody() {
+  if (!agentKeys) return html`<span class="spinner"></span>`;
+  if (!agentKeys.length) return html`<p class="muted-text">No agent keys yet.</p>`;
+  return html`<ul class="key-list">${agentKeys.map((k) => html`<li class="${k.revoked_at ? "revoked" : ""}">
+    <span class="key-main"><strong>${k.name}</strong><code>${k.key_prefix}…</code></span>
+    ${rolePill(k.role)}
+    <span class="muted-text">${k.revoked_at ? `Revoked ${timeAgo(k.revoked_at)}` : k.last_used_at ? `Last used ${timeAgo(k.last_used_at)}` : "Never used"}</span>
+    ${k.revoked_at ? "" : html`<button class="btn btn-ghost btn-sm danger-text" data-revoke="${k.id}">Revoke</button>`}
+  </li>`)}</ul>`;
+}
+
+function openKeyModal(onCreated) {
+  const m = modal({
+    title: "Create agent key",
+    subtitle: "The key is shown once and acts without a login — treat it like a password.",
+    size: "sm",
+    body: html`<form class="form" id="keyForm">
+      <label class="field"><span>Name</span><input class="input" name="name" required maxlength="60" placeholder="Claude Code" autofocus /></label>
+      <label class="field"><span>Role</span>
+        <select class="input" name="role">${Object.entries(AGENT_ROLES).map(([v, label]) => html`<option value="${v}" ${v === "manager" ? "selected" : ""}>${label}</option>`)}</select>
+      </label>
+    </form>`,
+    footer: html`<button class="btn btn-ghost" data-close>Cancel</button><button class="btn btn-primary" type="submit" form="keyForm">Create key</button>`,
+  });
+  $("#keyForm", m.el).addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const v = formData(e.target);
+    if (!v.name) return;
+    const btn = $("button[type=submit]", m.el);
+    setBusy(btn, true);
+    try {
+      const { key } = await app.backend.createAgentKey(app.org.id, { name: v.name, role: v.role });
+      mount($(".dialog-body", m.el), html`<div class="stack">
+        <div class="callout callout-accent">${icon("key")}<div><strong>Copy your key now</strong><span>It won't be shown again. Create a new key if you lose it.</span></div></div>
+        <div class="copy-field"><input class="input" readonly value="${key}" /><button class="btn btn-secondary" data-copy-key>${icon("copy")}Copy</button></div>
+        <div class="field"><span>MCP config</span><pre class="code-block" data-snippet>${mcpSnippet(key)}</pre></div>
+        <button class="btn btn-secondary" data-copy-snippet>${icon("copy")}Copy MCP config</button>
+      </div>`);
+      mount($(".dialog-foot", m.el), html`<button class="btn btn-primary" data-close>Done</button>`);
+      $("[data-copy-key]", m.el).onclick = () => copyText(key).then(() => toast("Key copied", { type: "success" }));
+      $("[data-copy-snippet]", m.el).onclick = () => copyText($("[data-snippet]", m.el).textContent).then(() => toast("MCP config copied", { type: "success" }));
+      onCreated?.();
+    } catch (err) {
+      toastError(err);
+      setBusy(btn, false);
+    }
+  });
+}
 
 function tabBody(tab) {
   if (tab === "appearance") return html`<section class="card"><header class="card-head"><h2>Appearance</h2><span class="muted-text">Saved to your profile and synced across devices</span></header><div data-ap></div></section>`;
@@ -55,6 +128,30 @@ function tabBody(tab) {
     </section>`;
   }
 
+  if (tab === "agents") return html`
+    <section class="card">
+      <header class="card-head"><h2>Agent keys</h2><span class="muted-text">Scoped access for AI agents and scripts</span></header>
+      ${app.demo ? html`<div class="callout">${icon("alert")}<div><strong>Agent keys need Supabase</strong><span>Demo mode lives only in this browser, so there's no endpoint for an agent to call. You can still create a key here to see how it works.</span></div></div>` : ""}
+      <p class="muted-text">A key acts on ${app.org.name} without a login and obeys the same permission rules as a person with that role. Revoking takes effect immediately.</p>
+      <div data-keys></div>
+      <div class="form-actions start"><button class="btn btn-primary" data-new-key>${icon("plus")}Create agent key</button></div>
+    </section>
+    <section class="card">
+      <header class="card-head"><h2>Connect an agent</h2></header>
+      <p class="muted-text">Point any MCP client (Claude Code, Claude Desktop, Cursor) at <code>mcp/myhr-mcp.mjs</code>. It exposes 15 tools — directory, tasks, onboarding, automations and Slack.</p>
+      <pre class="code-block" data-mcp>${mcpSnippet()}</pre>
+      <div class="form-actions start">
+        <button class="btn btn-secondary" data-copy-mcp>${icon("copy")}Copy config</button>
+        <button class="btn btn-ghost" data-copy-endpoint>${icon("link")}Copy API endpoint</button>
+      </div>
+      <ol class="setup-guide">
+        <li><strong>Deploy the API</strong> — <code>supabase functions deploy agent-api --no-verify-jwt</code></li>
+        <li><strong>Create a key</strong> above and paste it into the config.</li>
+        <li><strong>Check it works</strong> — <code>node mcp/myhr-mcp.mjs --check</code> prints your workspace or the exact error.</li>
+      </ol>
+      <p class="fine">Full guide, including plain HTTP usage: <code>mcp/README.md</code></p>
+    </section>`;
+
   // backend
   return html`<section class="card"><header class="card-head"><h2>Backend</h2>
       <span class="pill status ${app.demo ? "status-invited" : "status-active"}"><i></i>${app.demo ? "Demo mode" : "Supabase connected"}</span></header>
@@ -83,6 +180,38 @@ export function render(params) {
 export function bind(root) {
   const ap = $("[data-ap]", root);
   if (ap) bindAppearance(ap);
+
+  const keysBox = $("[data-keys]", root);
+  const loadKeys = async (force) => {
+    if (force || keysFor !== app.org.id || !agentKeys) {
+      try {
+        agentKeys = await app.backend.listAgentKeys(app.org.id);
+        keysFor = app.org.id;
+      } catch (err) {
+        agentKeys = [];
+        toastError(err);
+      }
+    }
+    if (document.body.contains(keysBox)) mount(keysBox, keysBody());
+  };
+  if (keysBox) loadKeys();
+
+  on(root, "click", "[data-new-key]", () => openKeyModal(() => loadKeys(true)));
+  on(root, "click", "[data-revoke]", async (e, b) => {
+    const k = agentKeys.find((x) => x.id === b.dataset.revoke);
+    if (!(await confirmDialog({ title: `Revoke "${k.name}"?`, message: "Any agent using this key stops working immediately.", confirmLabel: "Revoke", danger: true }))) return;
+    try {
+      await app.backend.revokeAgentKey(k.id);
+      await loadKeys(true);
+      toast("Key revoked");
+    } catch (err) { toastError(err); }
+  });
+  on(root, "click", "[data-copy-mcp]", () => copyText($("[data-mcp]", root).textContent).then(() => toast("MCP config copied", { type: "success" })));
+  on(root, "click", "[data-copy-endpoint]", () => {
+    const url = app.backend.agentEndpoint();
+    if (!url) return toast("Connect Supabase first — Demo mode has no API endpoint.", { type: "error" });
+    copyText(url).then(() => toast("Endpoint copied", { type: "success" }));
+  });
 
   on(root, "submit", "[data-account]", async (e, f) => {
     e.preventDefault();

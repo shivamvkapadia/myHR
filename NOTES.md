@@ -56,6 +56,22 @@ landing → demo login → home → boards → kanban → task modal → people 
   closed the user's own Chrome windows. Don't do that again — kill only the
   spawned process.
 
+### Later that day — AI agent access + Slack honesty
+User asked to "set up" Slack and to let people connect their AI agents.
+
+- **Slack:** can't create their webhook (needs their Slack login). Instead:
+  added the exact click path to the Slack page, and fixed a dishonest toast —
+  Demo mode posts with `no-cors`, so the response is opaque and delivery can't
+  be confirmed. The toast now says so instead of claiming "delivered".
+- **Agents:** added `agent_keys` + `supabase/functions/agent-api` (API-key
+  auth, role-checked, 15 actions) and `mcp/myhr-mcp.mjs`, a zero-dependency
+  MCP server over stdio. Settings → AI agents creates/revokes keys and
+  generates the MCP config snippet. Keys are hashed in the browser; plaintext
+  shown once.
+- Tested the MCP server by piping JSON-RPC: initialize handshake, 15 tools
+  listed, unknown tool rejected, missing-env error is clear. The agent-api
+  function itself is **untested** (needs deployment).
+
 ### Not done yet
 - Never run against a live Supabase project (schema + adapter are untested in
   practice). Slack Edge Function not deployed.

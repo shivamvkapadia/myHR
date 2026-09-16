@@ -55,8 +55,9 @@ function body() {
         <section class="card">
           <header class="card-head"><h2>How sync works</h2></header>
           <ol class="how-list">
+            <li><strong>Create the webhook.</strong> <a class="link" href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noopener">api.slack.com/apps ${icon("external")}</a> → <em>Create New App</em> → <em>From scratch</em> → name it and pick your workspace → <em>Incoming Webhooks</em> → toggle <em>On</em> → <em>Add New Webhook to Workspace</em> → choose a channel → copy the URL into the field above and Save.</li>
             ${app.demo
-              ? html`<li><strong>Demo mode posts straight from your browser.</strong> Events you trigger here are sent to the webhook immediately.</li>`
+              ? html`<li><strong>Demo mode posts straight from your browser.</strong> New hires, created and completed tasks go to the webhook right away. The browser can't read Slack's reply, so confirm in the channel itself.</li>`
               : html`<li><strong>Deploy the Edge Function</strong> <code>supabase functions deploy slack-notify --no-verify-jwt</code></li>
                 <li><strong>Add Database Webhooks</strong> for <code>tasks</code> and <code>employees</code> (INSERT, UPDATE) pointing at the function, with header <code>x-webhook-secret</code>.</li>
                 <li><strong>Optional daily digest</strong> — schedule the function with <code>pg_cron</code>. See the README.</li>`}
@@ -106,8 +107,14 @@ export async function bind(root) {
     const kind = b.dataset.send;
     setBusy(b, true, "Sending…");
     try {
-      await app.backend.sendSlack(app.org.id, kind, kind === "digest" ? digestText() : slackMessage("test", { org: app.org.name }));
-      toast(kind === "digest" ? "Digest sent to Slack" : "Test message sent — check your channel", { type: "success" });
+      const res = await app.backend.sendSlack(app.org.id, kind, kind === "digest" ? digestText() : slackMessage("test", { org: app.org.name }));
+      // Demo mode posts from the browser, which can't read Slack's response.
+      toast(
+        res?.opaque
+          ? `Sent to Slack — the browser can't confirm delivery, so check ${integ.slack_channel || "your channel"}`
+          : kind === "digest" ? "Digest delivered to Slack" : "Test message delivered to Slack",
+        { type: "success", duration: res?.opaque ? 6000 : 3800 }
+      );
     } catch (err) { toastError(err); }
     setBusy(b, false);
   });

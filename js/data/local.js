@@ -8,7 +8,7 @@ import { slackMessage } from "../lib/slack.js";
 const KEY = "myhr:demo-db:v1";
 const EMPTY = () => ({
   users: [], session: null, profiles: {}, organizations: [], employees: [], boards: [], columns: [],
-  tasks: [], automations: [], integrations: [], files: [], activity: [],
+  tasks: [], automations: [], integrations: [], files: [], activity: [], agent_keys: [],
 });
 
 async function sha256(text) {
@@ -425,6 +425,26 @@ export function createLocalAdapter() {
       log(orgId, kind === "digest" ? "sent Slack digest to" : "sent a test message to", integ.slack_channel || "Slack");
       save("activity");
       return { ok: true, opaque: true };
+    },
+
+    // ---------- agent keys ----------
+    // Demo mode has no server for an agent to call, so keys are for preview only.
+    agentEndpoint() { return null; },
+    async listAgentKeys(orgId) { return byOrg(db.agent_keys || [], orgId); },
+    async createAgentKey(orgId, { name, role }) {
+      const { generateAgentKey } = await import("../lib/keys.js");
+      const { key, hash, prefix } = await generateAgentKey();
+      db.agent_keys = db.agent_keys || [];
+      const row = { id: uid(), org_id: orgId, name, role, key_hash: hash, key_prefix: prefix, created_at: new Date().toISOString(), last_used_at: null, revoked_at: null };
+      db.agent_keys.push(row);
+      save();
+      return { key, row };
+    },
+    async revokeAgentKey(id) {
+      const k = (db.agent_keys || []).find((x) => x.id === id);
+      if (k) k.revoked_at = new Date().toISOString();
+      save();
+      return k;
     },
 
     // ---------- files ----------
