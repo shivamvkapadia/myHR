@@ -399,7 +399,7 @@ begin
   on conflict (id) do update set full_name = coalesce(excluded.full_name, public.profiles.full_name);
 
   insert into public.boards (org_id, name, description, color, created_by)
-  values (v_org.id, 'People Ops', 'Onboarding, offboarding and HR operations', '#e0552b', v_uid)
+  values (v_org.id, 'People Ops', 'Onboarding, offboarding and HR operations', '#9bd8a9', v_uid)
   returning id into v_ops;
   insert into public.board_columns (board_id, org_id, name, position, is_done) values
     (v_ops, v_org.id, 'To do', 1000, false),
@@ -407,7 +407,7 @@ begin
     (v_ops, v_org.id, 'Done', 3000, true);
 
   insert into public.boards (org_id, name, description, color, created_by)
-  values (v_org.id, 'Team Tasks', 'Day-to-day work for the whole team', '#3a5bd9', v_uid)
+  values (v_org.id, 'Team Tasks', 'Day-to-day work for the whole team', '#9cc7f2', v_uid)
   returning id into v_team;
   insert into public.board_columns (board_id, org_id, name, position, is_done) values
     (v_team, v_org.id, 'Backlog', 1000, false),

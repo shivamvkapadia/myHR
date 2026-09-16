@@ -1,68 +1,76 @@
 # myHR — Project Context
 
 ## What it is
-A Trello-alternative service called **myHR**, focused on automating employee
-work tasks (task/board management like Trello) with **Slack sync** built in,
-plus an HR-flavored layer on top: a dashboard and a **role-based access
-control (RBAC)** system.
+**myHR** is a people-operations product: a team directory with real role-based
+access control, an onboarding automation engine, kanban task boards, project
+files and Slack sync — in one workspace.
 
-## Core concept
-- Board/task management similar to Trello (lists, cards, boards, assignments).
-- Two-way sync with Slack (task updates reflected in Slack, Slack actions
-  reflected in the app).
-- Employee task automation — the "HR" angle: onboarding tasks, recurring
-  work items, status tracking, etc.
+It started as a Trello alternative with Slack sync; it is now a full
+multi-tenant product (organizations, accounts, invites), not a demo page.
 
-## Requested features (v1 scope, from initial brief)
-1. **Dashboard** — central view of tasks/boards/activity.
-2. **Role-based access control (RBAC)** — different roles (e.g. admin,
-   manager, employee) with different permissions/views.
-3. **Slack sync** — service syncs task/board activity with Slack.
-4. **Employee task automation** — automate recurring/standard employee
-   work tasks.
+## Stack / constraints
+- **Frontend:** static HTML + CSS + ES modules. **No build step** (hard
+  constraint — deploys as-is to GitHub Pages).
+- **Backend:** Supabase (Postgres + RLS, Auth, Storage, Realtime, one Edge
+  Function). Keys go in `js/config.js`.
+- **Demo mode:** with no Supabase keys the app runs entirely in the browser
+  (localStorage + IndexedDB) against the same adapter interface, so the
+  GitHub Pages URL always works.
+- Repo: https://github.com/shivamvkapadia/myHR
 
-## v1 Demo — implemented
-Static HTML/CSS/JS dashboard (no build step), built for fast deploy to
-GitHub Pages. Files: `index.html`, `style.css`, `script.js`.
+## Design direction
+Modeled on Craft (craft.do): white canvas, near-black pill buttons, soft mint
+accent (`#9bd8a9`), Newsreader serif headings + Inter body, 12–24px radii,
+soft shadows. Deliberately not the old purple/teal gradient look.
 
-Sections:
-1. **Dashboard** — stat cards (employee count, tasks done/pending, Slack
-   status) + team task checklist with checkboxes.
-2. **Employees (admin-only / RBAC)** — employee metadata table (name,
-   role, department, email, status). Locked with a notice when viewing
-   as "Employee" role; visible when viewing as "Admin". Role is switched
-   via a dropdown in the sidebar (demo of RBAC, not real auth yet).
-3. **Slack Integration** — form to paste a Slack API key + default
-   channel (saved to demo state only, not sent anywhere). Includes an
-   "idea box" outlining how real two-way sync would work (slash
-   commands, bot DMs, daily digest, Supabase Edge Function) — concept
-   only, not wired up.
-4. **Project Files** — drag-and-drop dropzone to list files locally in
-   the browser (demo only, not persisted/uploaded anywhere yet).
-5. **Sync with Slack button** — top bar button, currently a fake
-   loading animation (no real API call).
+## Architecture
+```
+js/config.js        Supabase URL + anon key (empty = Demo mode)
+js/main.js          Boot + hash router (#/app/<section>/<params>)
+js/app.js           Session, memberships, current org, data cache
+js/router.js        Hash parsing / navigation
+js/theme.js         Appearance: theme, accent, backgrounds, glass, density
+js/data/index.js    Picks the backend
+js/data/local.js    Demo backend (mirrors DB triggers in JS)
+js/data/supabase.js Supabase backend (identical interface)
+js/data/seed.js     Demo workspace: Northwind Studio, 26 people, 3 boards
+js/lib/             dom (html`` escaping template), icons, perms, slack, idb
+js/ui/              ui (toast/modal/drawer/menu), bits, appearance, palette
+js/views/           landing, auth, shell, home, tasks, boards, people,
+                    automations, files, slack, settings, modals
+css/base.css        Tokens + components + app shell
+css/pages.css       Page layouts + landing + auth
+supabase/schema.sql Tables, RLS, triggers, RPCs, storage bucket
+supabase/functions/slack-notify   Edge Function (DB webhooks + app calls)
+```
 
-Design: dark theme, purple/teal accent gradient, sidebar nav, card-based
-panels — original look, not a Trello clone visually.
+## Data model
+`organizations, profiles, employees, boards, board_columns, tasks,
+automations, org_integrations, files, activity`.
 
-## Planned deployment
-- Frontend: GitHub Pages (static, matches current file structure).
-- Backend/data: Supabase (planned, not yet integrated) — likely to hold
-  employees, tasks, and Slack config instead of the current in-memory
-  JS arrays.
-- Originally would have used Vercel, switched to Supabase + GitHub Pages
-  for time constraints.
+An **employees row is the membership** — `user_id` links it to an auth user;
+`user_id null + status invited` is a pending invite claimed by
+`claim_invites()` on sign-in (matched on verified email).
+
+## RBAC
+Owner / Admin / Manager / Employee, enforced by RLS policies plus an
+`employees_guard` trigger that blocks non-admins from changing role, status,
+title, department, manager or start date. `js/lib/perms.js` mirrors this for
+the UI. "Preview as role" lets an owner view the app as a lower role.
+
+## Automations
+Rules: *when employee added/offboarded (optionally per department) → create
+these steps on this board*, each step with a day offset, assignee rule
+(employee / manager / creator) and priority. Runs in the `employees_after`
+trigger server-side; `local.js` mirrors the same logic.
 
 ## Status
-Demo v1 UI complete and functional in-browser (all data is hardcoded /
-client-side, no backend yet). Next steps depend on further direction
-from user — likely: wire up Supabase for real data + auth, and decide
-how far to take real Slack integration.
+Complete and working end-to-end in Demo mode; verified in headless Chrome
+across every page with no console errors. Supabase path is written but not
+yet run against a live project.
 
-## Open questions (still open)
-- Real auth method for RBAC (currently just a role dropdown, not real
-  login)?
-- Supabase schema — employees table, tasks table, slack_config table?
-- Real Slack integration — is faking it enough for this demo, or does
-  it need to actually call the Slack API at some point?
-- Multi-tenant or single company?
+## Next / open
+- Run `supabase/schema.sql` on a real project and connect keys.
+- Slack: deploy the Edge Function + DB webhooks (Demo mode posts directly).
+- Not built: notifications/bell, time off, org chart, per-department managers
+  editing their own team, audit log UI, Slack slash commands back into myHR.

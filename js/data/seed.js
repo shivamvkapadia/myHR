@@ -76,9 +76,9 @@ export function buildSeed() {
     return { b, columns };
   };
 
-  const ops = board("People Ops", "Onboarding, offboarding and HR operations", "#e0552b", ["To do", "In progress", "Done"]);
-  const launch = board("Q4 Launch", "Everything shipping for the November release", "#3a5bd9", ["Backlog", "This week", "In review", "Done"]);
-  const support = board("Support Desk", "Escalations and customer follow-ups", "#23835a", ["New", "Investigating", "Done"]);
+  const ops = board("People Ops", "Onboarding, offboarding and HR operations", "#9bd8a9", ["To do", "In progress", "Done"]);
+  const launch = board("Q4 Launch", "Everything shipping for the November release", "#9cc7f2", ["Backlog", "This week", "In review", "Done"]);
+  const support = board("Support Desk", "Escalations and customer follow-ups", "#f3d37a", ["New", "Investigating", "Done"]);
 
   const tasks = [];
   const t = (bd, colName, title, who, dueOffset, priority = "medium", labels = [], extra = {}) => {
